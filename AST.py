@@ -5,7 +5,7 @@ class AST:
 
     def __init__(self, tokenizer: Tokenizer) -> None:
         self.tokenizer = tokenizer
-        self.root: Binary_Operation_Node = Block_Node(self)
+        self.root: Binary_Operation_Node = None
 
     def traverse(self):
         for node in self.root.children:
@@ -67,6 +67,8 @@ class Identifier_Node(Node):
 
 
 class Function_Node(Node):
+    def __str__(self) -> str:
+        return "HI"
     pass
 
 
@@ -124,21 +126,21 @@ class Binary_Operation_Node(Node):
         if is_left_leaf and is_right_leaf:
             statement += f"li $t0, {self.left.generate_assembly()}\n"
             statement += f"li $t1, {self.right.generate_assembly()}\n"
-            statement += f"{operation[0]}, {", ".join(operation[1:])}\n"
+            statement += f"{operation[0]}, {', '.join(operation[1:])}\n"
             statement += f"add $s0, $0, $t2\n"
 
         elif is_left_leaf:
             statement += self.right.generate_assembly()
             statement += f"li $t0, {self.left.generate_assembly()}\n"
             operation[3] = "$s0"
-            statement += f"{operation[0]}, {", ".join(operation[1:])}\n"
+            statement += f"{operation[0]}, {', '.join(operation[1:])}\n"
             statement += f"add $s0, $0, $t2\n"
 
         elif is_right_leaf:
             statement += self.left.generate_assembly()
             statement += f"li $t1, {self.right.generate_assembly()}\n"
             operation[2] = "$s0"
-            statement += f"{operation[0]}, {", ".join(operation[1:])}\n"
+            statement += f"{operation[0]}, {', '.join(operation[1:])}\n"
             statement += f"add $s0, $0, $t2\n"
 
         else:
@@ -157,9 +159,10 @@ class Binary_Operation_Node(Node):
 
 
 class Block_Node(Node):
-    def __init__(self, ast) -> None:
+    def __init__(self, ast, operation) -> None:
         super().__init__(ast, None, False)
         self.children = []
+        self.operation = operation
 
     def generate_assembly(self):
         results = ""
@@ -172,10 +175,10 @@ class Block_Node(Node):
         return results
 
     def __str__(self) -> str:
-        res = ""
+        res = f"{self.operation}:\n"
         for node in self.children:
             res += f"{node}\n"
-        return res
+        return res.strip() + "\nCLOSE"
 
     def __repr__(self) -> str:
         return self.__str__()

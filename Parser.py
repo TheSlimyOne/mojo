@@ -17,7 +17,6 @@ class Parser:
         self.current_heap_index = 0
         self.current_token = self.advance()
         self.ast = AST(tokenizer)
-        self.root: Block_Node = self.ast.root
         self.symbol_table = {}
 
     # Moves on to the next token in list
@@ -45,22 +44,30 @@ class Parser:
         self.current_token = self.advance()
         self.symbol_table.clear()
 
-        self.root = self.block()
+        self.ast.root = self.block("STARTER")
         return self.ast
 
     # block -> begin {statement}* end
-    def block(self):
+    def block(self, operation="Unnamed"):
         
-    
         if self.current_token.token_name != "<OPEN_BRACKET>":
-            raise SyntaxError("Expected {")
+            raise SyntaxError(f"Expected {'{'} but got {self.current_token.text}")
+
+        block = Block_Node(self.ast, operation)
 
         self.advance()
-
+        
         while self.current_token.token_name != "<CLOSE_BRACKET>":
+            
             # raise check if shits out of bounds the advance func()
-            self.root.children.append(self.statement())
+            if self.current_token.token_name == "<OPEN_BRACKET>":
+                block.children.append(self.block())
+            else:
+                block.children.append(self.statement())
+   
 
+        self.advance()
+        return block
 
     # statement -> (assign|if|function|for|while)
     def statement(self) -> Binary_Operation_Node:
@@ -68,9 +75,12 @@ class Parser:
         if re.fullmatch(self.tokenizer.bnf["<type>"], self.current_token.token_name):
             return self.assign()
         elif self.current_token.token_name == "<IF>":
-            pass
+            self.advance()
+            return self.block("IF")
         else:
             self.advance()
+
+
 
     # assign -> id = expr;
     def assign(self) -> Binary_Operation_Node:

@@ -37,6 +37,10 @@ class Parser:
             return self.current_token
         return None
     
+    def peek(self, amount):
+        next_index = self.current_token_index + 1
+        return self.tokens[next_index:next_index+amount]
+    
     # Generator
     def generate_AST(self) -> AST:
         # Reset token index
@@ -75,13 +79,38 @@ class Parser:
         if re.fullmatch(self.tokenizer.bnf["<type>"], self.current_token.token_name):
             return self.assign()
         elif self.current_token.token_name == "<IF>":
-            self.advance()
-            return self.block("IF")
+            if (self.boolean_expression()):
+                return self.block("IF")
+        elif self.current_token.token_name == "<WHILE>":
+            if (self.boolean_expression()):
+                return self.block("WHILE")
         else:
             self.advance()
 
+    # boolean_expression -> expr == expr
+    def boolean_expression(self) -> Binary_Operation_Node:
+        self.advance()
+        if self.current_token.token_name == "<OPEN_PARENTHESIS>":
+            self.advance()
+            self.advance()
 
+            # print(re.fullmatch(self.peek(1)[0], "="))
+            if (self.current_token.text == "=" and re.fullmatch(self.peek(1)[0].text, "=")):
+                self.current_token.text =  self.current_token.text + self.peek(1)[0].text
+                self.current_token.token_name = "<equality>"
+                del self.tokens[self.current_token_index + 1]            
 
+            self.retreat()
+            node = self.binary_operation(self.factor, self.factor, ("<equality>"), once=True)
+
+            if (self.current_token.token_name)=="<CLOSE_PARENTHESIS>":
+                self.advance()
+                return True
+        
+    def extract(pattern, last_token):
+        matches = re.findall(pattern, last_token)
+        return matches[0] if matches else None
+    
     # assign -> id = expr;
     def assign(self) -> Binary_Operation_Node:
         data_type = self.current_token.token_name
@@ -89,7 +118,6 @@ class Parser:
         self.advance()
        
         variable_token = self.current_token
-        
         
         node = self.binary_operation(self.id, self.expr, ("<EQUAL>"), func_left_args=[data_type], once=True)
 
@@ -106,6 +134,9 @@ class Parser:
     # expr -> term { (+|-) term}*
     def expr(self) -> Binary_Operation_Node:
         return self.binary_operation(self.term, self.term, ("<PLUS>, <MINUS>"))
+
+    def bin_expr(self) -> Binary_Operation_Node:
+        return self.boolean_expression(self.factor(), self.factor, (("<EQUAL>")))
 
     # term -> factor { (*|/) factor}*
     def term(self) -> Binary_Operation_Node:
@@ -166,4 +197,3 @@ class Parser:
      
         for (symbol, variable_data) in self.symbol_table.items():
             print(f"{symbol.__str__():<10} |{variable_data[0]:<10} |{variable_data[1].child.__str__()}")
-     

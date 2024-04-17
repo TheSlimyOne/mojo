@@ -67,9 +67,16 @@ class Identifier_Node(Node):
 
 
 class Function_Node(Node):
+    def __str__(self, ast, parameter) -> str:
+        super().__init__(ast, None, False)
+        self.parameter = parameter
+        
     def __str__(self) -> str:
-        return "HI"
-    pass
+        return self.variable_name.__str__()
+
+    def __repr__(self) -> str:
+        return self.__str__()
+    
 
 
 class Variable_Node(Node):

@@ -6,7 +6,6 @@ class Parser:
 
     def __init__(self, tokens: list[Token], tokenizer: "Tokenizer") -> None:
         
-
         # Remove all the invalid tokens
         self.tokens: list[Token] = tokens
 
@@ -20,9 +19,9 @@ class Parser:
         self.symbol_table = {}
 
     # Moves on to the next token in list
-    def advance(self):
+    def advance(self, num = 1):
         
-        self.current_token_index += 1
+        self.current_token_index += num
         if self.current_token_index < len(self.tokens):
             self.current_token = self.tokens[self.current_token_index]
             return self.current_token
@@ -66,8 +65,11 @@ class Parser:
             # raise check if shits out of bounds the advance func()
             if self.current_token.token_name == "<OPEN_BRACKET>":
                 block.children.append(self.block())
+            elif self.current_token.token_name == "<PRINT>":
+                block.children.append(self.print_statement())
             else:
                 block.children.append(self.statement())
+                    
    
 
         self.advance()
@@ -75,9 +77,10 @@ class Parser:
 
     # statement -> (assign|if|function|for|while)
     def statement(self) -> Binary_Operation_Node:
-        
         if re.fullmatch(self.tokenizer.bnf["<type>"], self.current_token.token_name):
             return self.assign()
+        elif self.current_token.token_name == "<PRINT>":
+            return self.print_statement()
         elif self.current_token.token_name == "<IF>":
             if (self.boolean_expression()):
                 return self.block("IF")
@@ -94,7 +97,6 @@ class Parser:
             self.advance()
             self.advance()
 
-            # print(re.fullmatch(self.peek(1)[0], "="))
             if (self.current_token.text == "=" and re.fullmatch(self.peek(1)[0].text, "=")):
                 self.current_token.text =  self.current_token.text + self.peek(1)[0].text
                 self.current_token.token_name = "<equality>"
@@ -106,11 +108,16 @@ class Parser:
             if (self.current_token.token_name)=="<CLOSE_PARENTHESIS>":
                 self.advance()
                 return True
-        
-    def extract(pattern, last_token):
-        matches = re.findall(pattern, last_token)
-        return matches[0] if matches else None
     
+    # print -> print ("");
+    def print_statement(self) -> Function_Node:
+        function_val = self.peek(3)
+
+        # (<OPEN_PARENTHESIS>, "hi", <CLOSE_PARENTHESIS>))
+        node = self.function_operation(function_val[0], function_val[1], function_val[2], "<PRINT>")
+        self.advance()
+        return node
+
     # assign -> id = expr;
     def assign(self) -> Binary_Operation_Node:
         data_type = self.current_token.token_name
@@ -192,6 +199,22 @@ class Parser:
       
         # Return the node back up
         return left
+    
+    # Allows you to make function node 
+    # Should update to include multiple parameters
+    def function_operation(self, open_par, parameters, close_par, function="Unnamed") -> Function_Node:
+        func: Node = function
+        allowed_param = "<STRING_LITERAL>"
+
+        # Check for format ("");
+        if open_par.token_name == "<OPEN_PARENTHESIS>" and parameters.token_name == allowed_param and close_par.token_name == "<CLOSE_PARENTHESIS>":
+            self.advance(4)
+
+            if self.current_token.token_name != "<STATEMENT_TERMINATOR>":
+                raise SyntaxError("Expected ';'")
+        # Will return function type (<PRINT>)
+        return func
+        
     
     def print_symbol_table(self):
      

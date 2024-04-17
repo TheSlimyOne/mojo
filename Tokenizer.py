@@ -67,6 +67,7 @@ class Token:
                     prev_value = Token.extract(valuePattern, last_element)
 
                     # Checks last token to see if it should be added to or made a string literal
+                    Token.updatePrev(QOUTE, prev_type, QOUTE, self, prev_value, lexer)
                     Token.updatePrev(QOUTE, prev_type, IDENORCHAR, self, prev_value, lexer)     
                     Token.updatePrev(IDENORCHAR, prev_type, QOUTE, self, prev_value, lexer)
                     Token.updatePrev(IDENORCHAR, prev_type, IDENORCHAR, self, prev_value, lexer)
@@ -96,11 +97,12 @@ class Token:
 
     def __ne__(self, other):
         return not(self == other)
+    # if quote == prevtype and quote == currType
     # if quote == prevtype and ind|chars == currType
     # if ind|chars == prevtype and quote == currType
     # if ind|chars == prevtype and ind|chars == currType
     def updatePrev(prev_check, prev_type, curr_check, curr_type, prev_value, lexer: Lexer):
-        STRING_LITERAL = r"\"[a-zA-Z0-9 ]*\""
+        STRING_LITERAL = r"\"[a-zA-Z0-9 ]*\"|\"\""
         IDENORCHAR = "<IDENTIFIER>|<CHARACTERS>"
         STRING_TOKEN_NAME = "<STRING_LITERAL>"
         CHARACTERS = "<CHARACTERS>"
@@ -108,14 +110,12 @@ class Token:
         if re.fullmatch(prev_check,prev_type) and re.fullmatch(curr_check, str(curr_type.token_name)):
             # Get the correct spacing
             space = " " if CHARACTERS == prev_type and re.fullmatch(IDENORCHAR, str(curr_type.token_name)) else ""
-
             # Update value and token type
             if re.fullmatch(STRING_LITERAL, curr_type.text):
                 curr_type.token_name = STRING_TOKEN_NAME
             else:
                 curr_type.text = prev_value + space + curr_type.text
                 curr_type.token_name = CHARACTERS
-
                 # Remove token just read as it was added to prev token 
                 del lexer.get_tokens()[len(lexer.get_tokens())-1]
 

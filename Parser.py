@@ -47,11 +47,17 @@ class Parser:
         self.current_token = self.advance()
         self.symbol_table.clear()
 
-        self.ast.root = self.block("STARTER")
+        self.ast.root = self.block()
         return self.ast
 
     # block -> begin {statement}* end
-    def block(self, operation="Unnamed"):
+    def block(self, operation=""):
+
+
+        # if self.current_token.token_name == "<OPEN_PARENTHESIS>":
+        #     print('hello')
+        #     exit()
+    
         
         if self.current_token.token_name != "<OPEN_BRACKET>":
             raise SyntaxError(f"Expected {'{'} but got {self.current_token.text}")
@@ -62,7 +68,7 @@ class Parser:
         
         while self.current_token.token_name != "<CLOSE_BRACKET>":
             
-            # raise check if shits out of bounds the advance func()
+            # raise check if shifts out of bounds the advance func()
             if self.current_token.token_name == "<OPEN_BRACKET>":
                 block.children.append(self.block())
             elif self.current_token.token_name == "<PRINT>":
@@ -77,16 +83,32 @@ class Parser:
 
     # statement -> (assign|if|function|for|while)
     def statement(self) -> Binary_Operation_Node:
+
+        parameter_node = None
+
         if re.fullmatch(self.tokenizer.bnf["<type>"], self.current_token.token_name):
             return self.assign()
+        
         elif self.current_token.token_name == "<PRINT>":
             return self.print_statement()
+        
         elif self.current_token.token_name == "<IF>":
-            if (self.boolean_expression()):
-                return self.block("IF")
+            parameter_node = self.boolean_expression()
+            if (parameter_node != None):
+                block_node = self.block("IF")
+                block_node.parameter = parameter_node
+                return block_node
+            else:
+                raise "If statement parameters are not defined"
+        
         elif self.current_token.token_name == "<WHILE>":
-            if (self.boolean_expression()):
-                return self.block("WHILE")
+            parameter_node = self.boolean_expression()
+            if (parameter_node != None):
+                block_node = self.block("WHILE")
+                block_node.parameter = parameter_node
+                return block_node
+            else:
+                raise "while statement parameters are not defined"
         else:
             self.advance()
 
@@ -94,27 +116,30 @@ class Parser:
     def boolean_expression(self) -> Binary_Operation_Node:
         self.advance()
         if self.current_token.token_name == "<OPEN_PARENTHESIS>":
+            self.advance(2)
+        else:
+            raise "Expected ("
+
+        if (self.current_token.text == "=" and re.fullmatch(self.peek(1)[0].text, "=")):
+            self.current_token.text = self.current_token.text + self.peek(1)[0].text
+            self.current_token.token_name = "<equality>"
+            del self.tokens[self.current_token_index + 1]            
+
+        self.retreat()
+        node = self.binary_operation(self.factor, self.factor, ("<equality>"), once=True)
+
+        if (self.current_token.token_name)=="<CLOSE_PARENTHESIS>":
             self.advance()
-            self.advance()
-
-            if (self.current_token.text == "=" and re.fullmatch(self.peek(1)[0].text, "=")):
-                self.current_token.text =  self.current_token.text + self.peek(1)[0].text
-                self.current_token.token_name = "<equality>"
-                del self.tokens[self.current_token_index + 1]            
-
-            self.retreat()
-            node = self.binary_operation(self.factor, self.factor, ("<equality>"), once=True)
-
-            if (self.current_token.token_name)=="<CLOSE_PARENTHESIS>":
-                self.advance()
-                return True
+            return node
+        else:
+            raise "Expected )"
     
     # print -> print ("");
     def print_statement(self) -> Function_Node:
         function_val = self.peek(3)
 
         # (<OPEN_PARENTHESIS>, "hi", <CLOSE_PARENTHESIS>))
-        node = self.function_operation(function_val[0], function_val[1], function_val[2], "<PRINT>")
+        node = self.function_operation(function_val[0], function_val[1], function_val[2], self.current_token.text)
         self.advance()
         return node
 
@@ -202,8 +227,9 @@ class Parser:
     
     # Allows you to make function node 
     # Should update to include multiple parameters
-    def function_operation(self, open_par, parameters, close_par, function="Unnamed") -> Function_Node:
-        func: Node = function
+    def function_operation(self, open_par, parameters, close_par, function_name) -> Function_Node:
+        func: Function_Node = Function_Node(self.ast, function_name, parameters) 
+    
         allowed_param = "<STRING_LITERAL>"
 
         # Check for format ("");

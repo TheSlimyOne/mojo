@@ -5,7 +5,7 @@ class AST:
 
     def __init__(self, tokenizer: Tokenizer) -> None:
         self.tokenizer = tokenizer
-        self.root: Binary_Operation_Node = None
+        self.root: Block_Node = None
 
     def traverse(self):
         for node in self.root.children:
@@ -23,13 +23,15 @@ class AST:
     def __repr__(self) -> str:
         return self.__str__()
 
+    def generate_assembly(self):
+        return "if __name__ == '__main__':\n" + self.root.generate_assembly(0 ,isRoot=True)
 
 class Node:
     def __init__(self, ast: AST, token: Token, isleaf: bool) -> None:
         self.token: Token = token
         self.ast = ast
         self.isleaf = isleaf
-        self.data_type = token.token_name if token != None else None
+        self.data_type = token.token_name if type(token) == Token  else None
 
     def generate_assembly(self):
         raise NotImplementedError("The node")
@@ -42,15 +44,15 @@ class Node:
 
 
 class Constant_Node(Node):
-    def __init__(self, ast, token: Token) -> None:
+    def __init__(self, ast: AST, token: Token) -> None:
         super().__init__(ast, token, True)
 
-    def generate_assembly(self):
-        return f"{self.token}"
+    def generate_assembly(self, tab_index):
+        return f"{self.token.text}"
 
 
 class Identifier_Node(Node):
-    def __init__(self, ast, token: Token, data_type: str, heap_index) -> None:
+    def __init__(self, ast: AST, token: Token, data_type: str, heap_index) -> None:
         super().__init__(ast, token, True)
         self.data_type = data_type
         self.heap_index = heap_index
@@ -61,43 +63,44 @@ class Identifier_Node(Node):
     def __repr__(self) -> str:
         return self.__str__()
 
-    def generate_assembly(self):
-        # return f"{self.heap_index}"
-        return ""
-
+    def generate_assembly(self, tab_index):
+        return self.token.text
 
 class Function_Node(Node):
-    def __str__(self, ast, parameter) -> str:
+    # pass in a list of tokens rather than a token
+    def __init__(self, ast: AST, function_name:str, parameters) -> str:
         super().__init__(ast, None, False)
-        self.parameter = parameter
+        self.parameters = parameters
+        self.function_name = function_name
         
     def __str__(self) -> str:
-        return self.variable_name.__str__()
+        return "function"
 
     def __repr__(self) -> str:
         return self.__str__()
     
-
+    def generate_assembly(self, tab_index):
+        # join via commas when arrays
+        return f"{'\t'*tab_index}{self.function_name}({self.parameters.text})"    
 
 class Variable_Node(Node):
-    def __init__(self, ast, variable_name, node) -> None:
-        super().__init__(ast, None, False)
-        self.variable_name = variable_name
+    def __init__(self, ast: AST, variable_token: Token, node) -> None:
+        super().__init__(ast, variable_token, False)
         self.data_type = node.left.data_type
         self.child = node.right
 
-    def generate_assembly(self):
-        return "do stuff"
+    def generate_assembly(self, tab_index):
+        return self.token.text
 
     def __str__(self) -> str:
-        return self.variable_name.__str__()
+        return self.token.text
 
     def __repr__(self) -> str:
         return self.__str__()
 
 
 class Binary_Operation_Node(Node):
-    def __init__(self, ast, operator, left, right) -> None:
+    def __init__(self, ast: AST, operator:str, left:Node, right:Node) -> None:
         super().__init__(ast, None, False)
         self.operator = operator
 
@@ -109,56 +112,11 @@ class Binary_Operation_Node(Node):
 
         self.data_type = self.ast.tokenizer.casting[(self.left.data_type, self.right.data_type)]
 
-    def generate_assembly(self):
-        operation = []
-        if self.operator == "=":
-            operation = f""
-
-        if self.operator == "+":
-            operation = ["add", "$t2", "$t0", "$t1"]
-
-        if self.operator == "-":
-            operation = ["sub", "$t2", "$t0", "$t1"]
-
-        if self.operator == "*":
-            operation = ["mul", "$t2", "$t0", "$t1"]
-
-        if self.operator == "/":
-            operation = ["div", "$t2", "$t0", "$t1"]
-
-        is_left_leaf = self.left.isleaf and not isinstance(self.left, Identifier_Node)
-        is_right_leaf = self.right.isleaf and not isinstance(self.right, Identifier_Node)
-
-        statement = ""
-        if is_left_leaf and is_right_leaf:
-            statement += f"li $t0, {self.left.generate_assembly()}\n"
-            statement += f"li $t1, {self.right.generate_assembly()}\n"
-            statement += f"{operation[0]}, {', '.join(operation[1:])}\n"
-            statement += f"add $s0, $0, $t2\n"
-
-        elif is_left_leaf:
-            statement += self.right.generate_assembly()
-            statement += f"li $t0, {self.left.generate_assembly()}\n"
-            operation[3] = "$s0"
-            statement += f"{operation[0]}, {', '.join(operation[1:])}\n"
-            statement += f"add $s0, $0, $t2\n"
-
-        elif is_right_leaf:
-            statement += self.left.generate_assembly()
-            statement += f"li $t1, {self.right.generate_assembly()}\n"
-            operation[2] = "$s0"
-            statement += f"{operation[0]}, {', '.join(operation[1:])}\n"
-            statement += f"add $s0, $0, $t2\n"
-
-        else:
-            statement += f"{self.left.generate_assembly()}"
-            statement += f"{self.right.generate_assembly()}"
-
-        return statement
+    def generate_assembly(self, tab_index, newLine: bool = True):
+        
+        return f"{'\t' * tab_index}{self.left.generate_assembly(0)} {self.operator} {self.right.generate_assembly(0)}{'\n' if newLine else ''}"
 
     def __str__(self) -> str:
-        if self.operator == "=":
-            return f"{self.left.data_type.__str__():<7} {self.left.__str__():<3} {self.operator} {self.right.data_type} {self.right}"
         return f"({self.left} {self.operator} {self.right})"
 
     def __repr__(self) -> str:
@@ -166,19 +124,20 @@ class Binary_Operation_Node(Node):
 
 
 class Block_Node(Node):
-    def __init__(self, ast, operation) -> None:
+    def __init__(self, ast: AST, operation: str, parameter_node: Node = None) -> None:
         super().__init__(ast, None, False)
         self.children = []
         self.operation = operation
+        self.parameter : Binary_Operation_Node = parameter_node
 
-    def generate_assembly(self):
-        results = ""
+    def generate_assembly(self, tab_index: int, isRoot=False):
+        results = f"{'\t' * tab_index}{self.operation.lower()} "
+        results += f"({self.parameter.generate_assembly(0, newLine=False)})" if self.parameter != None else ""
+
+        results += ":\n" if not isRoot else "\n"
+        
         for node in self.children:
-            results += node.generate_assembly()
-            results += "li $v0, 1\n"
-            results += "move $a0, $t2\n"
-            results += "syscall\n"
-
+            results += node.generate_assembly(tab_index + 1)
         return results
 
     def __str__(self) -> str:

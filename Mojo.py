@@ -10,5 +10,5 @@ if __name__ == '__main__':
     lexer.generate_tokens("ex1.mojo")
     parser = Parser(lexer.get_tokens(), tokenizer)
     ast = parser.generate_AST()
-    print(ast.generate_assembly())
+    print(ast.generate_python())
 

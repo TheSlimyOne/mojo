@@ -20,7 +20,6 @@ class Parser:
 
     # Moves on to the next token in list
     def advance(self, num = 1):
-        
         self.current_token_index += num
         if self.current_token_index < len(self.tokens):
             self.current_token = self.tokens[self.current_token_index]
@@ -29,14 +28,13 @@ class Parser:
     
     # Moves back to the previous token in list
     def retreat(self):
-        
         self.current_token_index -= 1
         if self.current_token_index >= 0:
             self.current_token = self.tokens[self.current_token_index]
             return self.current_token
         return None
     
-    def peek(self, amount):
+    def peek(self, amount:int):
         next_index = self.current_token_index + 1
         return self.tokens[next_index:next_index+amount]
     
@@ -51,14 +49,7 @@ class Parser:
         return self.ast
 
     # block -> begin {statement}* end
-    def block(self, operation=""):
-
-
-        # if self.current_token.token_name == "<OPEN_PARENTHESIS>":
-        #     print('hello')
-        #     exit()
-    
-        
+    def block(self, operation=""):        
         if self.current_token.token_name != "<OPEN_BRACKET>":
             raise SyntaxError(f"Expected {'{'} but got {self.current_token.text}")
 
@@ -76,14 +67,11 @@ class Parser:
             else:
                 block.children.append(self.statement())
                     
-   
-
         self.advance()
         return block
 
     # statement -> (assign|if|function|for|while)
     def statement(self) -> Binary_Operation_Node:
-
         parameter_node = None
 
         if re.fullmatch(self.tokenizer.bnf["<type>"], self.current_token.token_name):
@@ -100,6 +88,10 @@ class Parser:
                 return block_node
             else:
                 raise "If statement parameters are not defined"
+            
+        elif self.current_token.token_name == "<ELSE>":
+            self.advance()
+            return self.block("ELSE")
         
         elif self.current_token.token_name == "<WHILE>":
             parameter_node = self.boolean_expression()
@@ -136,10 +128,7 @@ class Parser:
     
     # print -> print ("");
     def print_statement(self) -> Function_Node:
-        function_val = self.peek(3)
-
-        # (<OPEN_PARENTHESIS>, "hi", <CLOSE_PARENTHESIS>))
-        node = self.function_operation(function_val[0], function_val[1], function_val[2], self.current_token.text)
+        node = self.function_operation(self.current_token.text)
         self.advance()
         return node
 
@@ -190,7 +179,7 @@ class Parser:
 
 
     # id -> id 
-    def id(self, data_type) -> Identifier_Node:
+    def id(self, data_type:str) -> Identifier_Node:
         token = self.current_token
         if token.token_name == "<IDENTIFIER>":
             self.advance()
@@ -227,7 +216,13 @@ class Parser:
     
     # Allows you to make function node 
     # Should update to include multiple parameters
-    def function_operation(self, open_par, parameters, close_par, function_name) -> Function_Node:
+    def function_operation(self, function_name:str) -> Function_Node:
+        function_val = self.peek(3)
+
+        open_par = function_val[0]
+        parameters = function_val[1]
+        close_par = function_val[2]
+
         func: Function_Node = Function_Node(self.ast, function_name, parameters) 
     
         allowed_param = "<STRING_LITERAL>"
@@ -243,6 +238,10 @@ class Parser:
         
     
     def print_symbol_table(self):
-     
         for (symbol, variable_data) in self.symbol_table.items():
             print(f"{symbol.__str__():<10} |{variable_data[0]:<10} |{variable_data[1].child.__str__()}")
+
+    def merge_token(self, new_token_name:str):
+        self.current_token.text += self.peek(1)[0].text
+        self.current_token.token_name = new_token_name
+        del self.tokens[self.current_token_index + 1]

@@ -3,5 +3,8 @@
   int b = a + 2;
   if (a == b) {
     print("hi jordan");
+  } 
+  else {
+    print("please");
   }
 }

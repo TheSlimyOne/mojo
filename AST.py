@@ -23,8 +23,8 @@ class AST:
     def __repr__(self) -> str:
         return self.__str__()
 
-    def generate_assembly(self):
-        return "if __name__ == '__main__':\n" + self.root.generate_assembly(0 ,isRoot=True)
+    def generate_python(self):
+        return "if __name__ == '__main__':\n" + self.root.generate_python(0 ,isRoot=True)
 
 class Node:
     def __init__(self, ast: AST, token: Token, isleaf: bool) -> None:
@@ -33,7 +33,7 @@ class Node:
         self.isleaf = isleaf
         self.data_type = token.token_name if type(token) == Token  else None
 
-    def generate_assembly(self):
+    def generate_python(self):
         raise NotImplementedError("The node")
 
     def __str__(self) -> str:
@@ -47,7 +47,7 @@ class Constant_Node(Node):
     def __init__(self, ast: AST, token: Token) -> None:
         super().__init__(ast, token, True)
 
-    def generate_assembly(self, tab_index):
+    def generate_python(self, tab_index):
         return f"{self.token.text}"
 
 
@@ -63,7 +63,7 @@ class Identifier_Node(Node):
     def __repr__(self) -> str:
         return self.__str__()
 
-    def generate_assembly(self, tab_index):
+    def generate_python(self, tab_index:int):
         return self.token.text
 
 class Function_Node(Node):
@@ -79,9 +79,10 @@ class Function_Node(Node):
     def __repr__(self) -> str:
         return self.__str__()
     
-    def generate_assembly(self, tab_index):
+    def generate_python(self, tab_index:int):
         # join via commas when arrays
-        return f"{'\t'*tab_index}{self.function_name}({self.parameters.text})"    
+        # return f"{'\t'*tab_index}{self.function_name}({self.parameters.text})"    
+        return "{}{}({})".format('\t' * tab_index, self.function_name, self.parameters.text)   
 
 class Variable_Node(Node):
     def __init__(self, ast: AST, variable_token: Token, node) -> None:
@@ -89,7 +90,7 @@ class Variable_Node(Node):
         self.data_type = node.left.data_type
         self.child = node.right
 
-    def generate_assembly(self, tab_index):
+    def generate_python(self, tab_index:int):
         return self.token.text
 
     def __str__(self) -> str:
@@ -112,9 +113,10 @@ class Binary_Operation_Node(Node):
 
         self.data_type = self.ast.tokenizer.casting[(self.left.data_type, self.right.data_type)]
 
-    def generate_assembly(self, tab_index, newLine: bool = True):
+    def generate_python(self, tab_index:int, newLine: bool = True):
         
-        return f"{'\t' * tab_index}{self.left.generate_assembly(0)} {self.operator} {self.right.generate_assembly(0)}{'\n' if newLine else ''}"
+        # return f"{'\t' * tab_index}{self.left.generate_python(0)} {self.operator} {self.right.generate_python(0)}{'\n' if newLine else ''}"
+        return "{}{} {} {}{}".format('\t' * tab_index, self.left.generate_python(0), self.operator, self.right.generate_python(0), '\n' if newLine else '')
 
     def __str__(self) -> str:
         return f"({self.left} {self.operator} {self.right})"
@@ -130,14 +132,21 @@ class Block_Node(Node):
         self.operation = operation
         self.parameter : Binary_Operation_Node = parameter_node
 
-    def generate_assembly(self, tab_index: int, isRoot=False):
-        results = f"{'\t' * tab_index}{self.operation.lower()} "
-        results += f"({self.parameter.generate_assembly(0, newLine=False)})" if self.parameter != None else ""
+    def generate_python(self, tab_index: int, isRoot=False):
+        # results = f"{'\t' * tab_index}{self.operation.lower()} "
+        # results += f"({self.parameter.generate_python(0, newLine=False)})" if self.parameter != None else ""
+
+        if self.parameter is not None:
+            results = "{}{}({})".format('\t' * tab_index, self.operation.lower(), self.parameter.generate_python(0, newLine=False))
+        elif self.operation == "ELSE":
+            results = "\n{}{}".format('\t' * tab_index, self.operation.lower())
+        else:
+            results = "{}{}".format('\t' * tab_index, self.operation.lower())
 
         results += ":\n" if not isRoot else "\n"
         
         for node in self.children:
-            results += node.generate_assembly(tab_index + 1)
+            results += node.generate_python(tab_index + 1)
         return results
 
     def __str__(self) -> str:

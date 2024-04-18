@@ -10,5 +10,7 @@ if __name__ == '__main__':
     lexer.generate_tokens("ex1.mojo")
     parser = Parser(lexer.get_tokens(), tokenizer)
     ast = parser.generate_AST()
-    print(ast.generate_python())
+
+    with open('MojoCode.py', 'w') as file:
+        file.write(ast.generate_python())
 

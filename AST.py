@@ -107,7 +107,10 @@ class Binary_Operation_Node(Node):
 
         self.left: Node = left
         self.right: Node = right
-     
+
+        # if self.left == None or self.right == None:
+        #     raise AttributeError("Variable type does not match with given value")
+        
         if (self.ast.tokenizer.casting.get((self.left.data_type, self.right.data_type)) == None):
             raise SyntaxError(f"Cannot {operator} {self.right.data_type} with {self.left.data_type}")
 

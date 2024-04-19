@@ -62,6 +62,7 @@ TOKEN
     <MINUS>                -> \-
     <DECIMAL>              -> \.
     <DIVISION>             -> \/
+    <MULTIPLICATION>       -> \*
     <EQUAL>                -> =
     <STATEMENT_TERMINATOR> -> ;
     <CHARACTERS>           -> [a-zA-Z0-9]*

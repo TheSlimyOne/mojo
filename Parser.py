@@ -161,7 +161,7 @@ class Parser:
 
     # term -> factor { (*|/) factor}*
     def term(self) -> Binary_Operation_Node:
-        return self.binary_operation(self.factor, self.factor, ("<MULTIPLY>, <DIVISION>"))
+        return self.binary_operation(self.factor, self.factor, ("<MULTIPLICATION>, <DIVISION>"))
     
     # factor -> id|int|dec
     def factor(self) -> Node:

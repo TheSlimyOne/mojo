@@ -29,6 +29,8 @@ CASTING
     <INTEGER_LITERAL>,<FLOAT> -> <FLOAT>
     <INTEGER>,<INTEGER_LITERAL> -> <INTEGER>
     <INTEGER_LITERAL>,<INTEGER> -> <INTEGER> 
+    <STRING_LITERAL>,<STRING> -> <STRING>
+    <STRING>,<STRING_LITERAL> -> <STRING>
 TOKEN
     <IF>                   -> if
     <FOR>                  -> for

@@ -9,7 +9,6 @@ class AST:
 
     def traverse(self):
         for node in self.root.children:
-            print(node.operator)
             if isinstance(node, Binary_Operation_Node) and node.operator == "=":
                 variable = node.left
                 value = node.right
@@ -48,8 +47,9 @@ class Constant_Node(Node):
         super().__init__(ast, token, True)
 
     def generate_python(self, tab_index):
-        return f"{self.token.text}"
-
+        # Gets rid of f at the end of floats 
+        return f"{self.token.text[:-1] if self.token.text.endswith('f') else self.token.text}"
+    
 
 class Identifier_Node(Node):
     def __init__(self, ast: AST, token: Token, data_type: str, heap_index) -> None:
@@ -82,7 +82,7 @@ class Function_Node(Node):
     def generate_python(self, tab_index:int):
         # join via commas when arrays
         # return f"{'\t'*tab_index}{self.function_name}({self.parameters.text})"    
-        return "{}{}({})".format('\t' * tab_index, self.function_name, self.parameters.text)   
+        return "{}{}({})\n".format('\t' * tab_index, self.function_name, self.parameters.text)   
 
 class Variable_Node(Node):
     def __init__(self, ast: AST, variable_token: Token, node) -> None:
@@ -114,7 +114,6 @@ class Binary_Operation_Node(Node):
         self.data_type = self.ast.tokenizer.casting[(self.left.data_type, self.right.data_type)]
 
     def generate_python(self, tab_index:int, newLine: bool = True):
-        
         # return f"{'\t' * tab_index}{self.left.generate_python(0)} {self.operator} {self.right.generate_python(0)}{'\n' if newLine else ''}"
         return "{}{} {} {}{}".format('\t' * tab_index, self.left.generate_python(0), self.operator, self.right.generate_python(0), '\n' if newLine else '')
 

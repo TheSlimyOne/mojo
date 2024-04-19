@@ -4,7 +4,6 @@ if __name__ == '__main__':
 	num2 = 4.0
 	if(num1 == num2):
 		print("hi jordan")
-
 	else:
 		print("hi hannah")
 

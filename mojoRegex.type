@@ -14,6 +14,10 @@ BNF
     <type>                 -> <INTEGER>|<FLOAT>|<STRING>
     <equality>             -> <EQUAL><EQUAL>
     <literal>              -> <STRING_LITERAL>|<INTEGER_LITERAL>|<FLOAT_LITERAL>
+BLOCK_STATEMENT
+    <IF> -> True
+    <ELSE> -> False
+    <WHILE> -> True
 CASTING
     <INTEGER_LITERAL>,<FLOAT_LITERAL> -> <FLOAT>
     <FLOAT_LITERAL>,<INTEGER_LITERAL> -> <FLOAT>

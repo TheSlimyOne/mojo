@@ -24,19 +24,24 @@ class Parser:
         if self.current_token_index < len(self.tokens):
             self.current_token = self.tokens[self.current_token_index]
             return self.current_token
+        self.current_token = None
         return None
     
     # Moves back to the previous token in list
-    def retreat(self):
-        self.current_token_index -= 1
+    def retreat(self, num = 1):
+        self.current_token_index -= num
         if self.current_token_index >= 0:
             self.current_token = self.tokens[self.current_token_index]
             return self.current_token
+        self.current_token = None
         return None
     
     def peek(self, amount:int):
         next_index = self.current_token_index + 1
         return self.tokens[next_index:next_index+amount]
+    
+    def isInbounds(self):
+        return self.current_token_index < len(self.tokens) and self.current_heap_index >= 0
     
     # Generator
     def generate_AST(self) -> AST:
@@ -51,14 +56,12 @@ class Parser:
     # block -> begin {statement}* end
     def block(self, operation=""):        
         if self.current_token.token_name != "<OPEN_BRACKET>":
-            raise SyntaxError(f"Expected {'{'} but got {self.current_token.text}")
+            raise SyntaxError(f"Expected \"{'{'}\" but got \"{self.current_token.text}\"")
 
         block = Block_Node(self.ast, operation)
-
         self.advance()
         
-        while self.current_token.token_name != "<CLOSE_BRACKET>":
-            
+        while self.current_token != None and self.current_token.token_name != "<CLOSE_BRACKET>":
             # raise check if shifts out of bounds the advance func()
             if self.current_token.token_name == "<OPEN_BRACKET>":
                 block.children.append(self.block())
@@ -66,7 +69,11 @@ class Parser:
                 block.children.append(self.print_statement())
             else:
                 block.children.append(self.statement())
-                    
+        
+        # Check for close bracket
+        if self.current_token == None:
+            raise SyntaxError(f"Expected \"{'}'}\"")
+        
         self.advance()
         return block
 
@@ -80,29 +87,22 @@ class Parser:
         elif self.current_token.token_name == "<PRINT>":
             return self.print_statement()
         
-        elif self.current_token.token_name == "<IF>":
-            parameter_node = self.boolean_expression()
-            if (parameter_node != None):
-                block_node = self.block("IF")
-                block_node.parameter = parameter_node
-                return block_node
-            else:
-                raise "If statement parameters are not defined"
+        elif self.current_token.token_name in self.tokenizer.block_statement.keys():
+            block_name = self.current_token.token_name
+            formatted_name = block_name.replace("<", "").replace(">","")
+            block_data = self.tokenizer.block_statement[block_name]
             
-        elif self.current_token.token_name == "<ELSE>":
-            self.advance()
-            return self.block("ELSE")
-        
-        elif self.current_token.token_name == "<WHILE>":
-            parameter_node = self.boolean_expression()
-            if (parameter_node != None):
-                block_node = self.block("WHILE")
-                block_node.parameter = parameter_node
-                return block_node
+            if (block_data[0]):
+                parameter_node = self.boolean_expression()
+                if (parameter_node != None):
+                    block_node = self.block(formatted_name)
+                    block_node.parameter = parameter_node
+                    return block_node
+                else:
+                    raise SyntaxError(f"{formatted_name} statement parameters are not defined")
             else:
-                raise "while statement parameters are not defined"
-        else:
-            self.advance()
+                self.advance()
+                return self.block("ELSE")
 
     # boolean_expression -> expr == expr
     def boolean_expression(self) -> Binary_Operation_Node:
@@ -110,7 +110,7 @@ class Parser:
         if self.current_token.token_name == "<OPEN_PARENTHESIS>":
             self.advance(2)
         else:
-            raise "Expected ("
+            raise SyntaxError("Expected (")
 
         if (self.current_token.text == "=" and re.fullmatch(self.peek(1)[0].text, "=")):
             self.current_token.text = self.current_token.text + self.peek(1)[0].text
@@ -124,7 +124,7 @@ class Parser:
             self.advance()
             return node
         else:
-            raise "Expected )"
+            raise SyntaxError("Expected )")
     
     # print -> print ("");
     def print_statement(self) -> Function_Node:

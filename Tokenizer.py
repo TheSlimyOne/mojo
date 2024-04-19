@@ -5,6 +5,7 @@ class Tokenizer:
 
     def __init__(self, token_path) -> None:
         self.bnf = {}
+        self.block_statement = {}
         self.casting = {}
         self.token = {}
 
@@ -15,6 +16,8 @@ class Tokenizer:
                 data_input = data_input.strip()
                 if data_input == "BNF":
                     using_function = self.collect_bnf
+                elif data_input == "BLOCK_STATEMENT":
+                    using_function = self.collect_block_statement
                 elif data_input == "CASTING":
                     using_function = self.collect_casting
                 elif data_input == "TOKEN":
@@ -29,6 +32,14 @@ class Tokenizer:
     def collect_bnf(self, data_input):
         data_input = data_input.split("->")
         self.bnf[data_input[0].strip()] = re.compile(data_input[1].strip())
+
+    def collect_block_statement(self, data_input):
+        data_input = data_input.split("->")
+        block_name = data_input[0].strip()
+
+        # First column: include parameters (True, False)
+        block_data = list(map(eval, data_input[1].split(",")))
+        self.block_statement[block_name] = block_data
     
     def collect_casting(self, data_input):
         data_input = data_input.split("->")
@@ -38,9 +49,13 @@ class Tokenizer:
     def collect_token(self, data_input):
         data_input = data_input.split("->")
         self.token[data_input[0].strip()] = re.compile(data_input[1].strip())
+
+    
         
 
 class Token:
+    # prob want to make these static functions non static in the future
+
     def __init__(self, text, tokenizer: Tokenizer, lexer: Lexer) -> None:
         self.error_msg = None
         self.text = text
@@ -63,14 +78,14 @@ class Token:
                     prev_type = Token.extract(type_pattern, last_element)
 
                     # Extracted content between ":" and ")"
-                    valuePattern = r':([^)]*)\)$'
-                    prev_value = Token.extract(valuePattern, last_element)
+                    value_pattern = r':([^)]*)\)$'
+                    prev_value = Token.extract(value_pattern, last_element)
 
                     # Checks last token to see if it should be added to or made a string literal
-                    Token.updatePrev(QOUTE, prev_type, QOUTE, self, prev_value, lexer)
-                    Token.updatePrev(QOUTE, prev_type, IDENORCHAR, self, prev_value, lexer)     
-                    Token.updatePrev(IDENORCHAR, prev_type, QOUTE, self, prev_value, lexer)
-                    Token.updatePrev(IDENORCHAR, prev_type, IDENORCHAR, self, prev_value, lexer)
+                    Token.update_prev(QOUTE, prev_type, QOUTE, self, prev_value, lexer)
+                    Token.update_prev(QOUTE, prev_type, IDENORCHAR, self, prev_value, lexer)     
+                    Token.update_prev(IDENORCHAR, prev_type, QOUTE, self, prev_value, lexer)
+                    Token.update_prev(IDENORCHAR, prev_type, IDENORCHAR, self, prev_value, lexer)
                 return
             
         self.error_msg = f"'{text}' is not recognized"
@@ -96,12 +111,12 @@ class Token:
             return (self.text, self.token_name) == (other.text, other.token_name)
 
     def __ne__(self, other):
-        return not(self == other)
+        return not (self == other)
     # if quote == prevtype and quote == currType
     # if quote == prevtype and ind|chars == currType
     # if ind|chars == prevtype and quote == currType
     # if ind|chars == prevtype and ind|chars == currType
-    def updatePrev(prev_check, prev_type, curr_check, curr_type, prev_value, lexer: Lexer):
+    def update_prev(prev_check, prev_type, curr_check, curr_type, prev_value, lexer: Lexer):
         STRING_LITERAL = r"\"[a-zA-Z0-9 ]*\"|\"\""
         IDENORCHAR = "<IDENTIFIER>|<CHARACTERS>"
         STRING_TOKEN_NAME = "<STRING_LITERAL>"
